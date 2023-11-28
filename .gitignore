@@ -355,3 +355,5 @@ lightning_logs/
 key.ini
 
 Datasets
+cache/*
+!cache/.gitkeep

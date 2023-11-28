@@ -11,7 +11,7 @@ num_workers: 0
 #### Training step ####
 EPOCHS: 1000
 batch_size: 64
-lr: 2e-3
+lr: 2.0e-3
 
 weight_decay: 0.075
 k_folds: 5
