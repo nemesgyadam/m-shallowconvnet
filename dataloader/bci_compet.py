@@ -9,7 +9,7 @@ from dataloader.augmentation import cutcat
 
 
 class BCICompet2aIV(torch.utils.data.Dataset):
-    def __init__(self, args):
+    def __init__(self, args, return_subject_id = False):
         
         '''
         * 769: Left
@@ -26,6 +26,7 @@ class BCICompet2aIV(torch.utils.data.Dataset):
         self.is_test = args.is_test
         self.downsampling = args.downsampling
         self.args = args
+        self.return_subject_id = return_subject_id
         
         self.data, self.label = self.get_brain_data()
         
@@ -41,14 +42,19 @@ class BCICompet2aIV(torch.utils.data.Dataset):
         if not self.is_test:
             data, label = self.augmentation(data, label)
         
-        sample = {'data': data, 'label': label}
+        if self.return_subject_id:
+            sample = {'data': data, 'subject_id': self.target_subject, 'label': label}
+        else:
+            sample = {'data': data, 'label': label}
         
         return sample
     
     
     def get_brain_data(self):
+
         filelist = sorted(glob(f'{self.base_path}/*T*.gdf')) if not self.is_test \
         else sorted(glob(f'{self.base_path}/*E*.gdf'))
+ 
         
         label_filelist = sorted(glob(f'{self.base_path}/true_labels/*T.mat')) if not self.is_test \
         else sorted(glob(f'{self.base_path}/true_labels/*E.mat'))

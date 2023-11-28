@@ -12,31 +12,35 @@ from model.mshallowconvnet import get_model
 
 
 class LitModel(LightningModule):
-    def __init__(self, args):
+    def __init__(self, args, model = None):
         super().__init__()
         
         self.save_hyperparameters()
-        self.model = get_model(args)
+        if model:
+            self.model = model
+        else:   
+            self.model = get_model(args)
         self.criterion = get_criterion()
         self.args = args
     
     
-    def forward(self, x):
-        return self.model(x)
+    def forward(self, eeg_data, subject_id):
+        return self.model(eeg_data, subject_id)
     
     
     def training_step(self, batch, batch_idx):
         if self.current_epoch == 0:
             self.sample_batch = batch['data'].type(torch.float)
 
-        inputs = batch['data'].type(torch.float)
+        eeg_input = batch['data'].type(torch.float)
+        subject_id = batch['subject_id'].type(torch.long)
         labels = batch['label'].type(torch.long) if batch['label'].dim() == 1 else batch['label']
         
-        outputs = self(inputs)
+        outputs = self(eeg_input, subject_id)
         loss = self.criterion(outputs, labels)
         preds = torch.argmax(outputs, dim=1)
         
-        acc = accuracy(preds, labels if labels.dim() == 1 else torch.argmax(labels, dim=1))
+        acc = accuracy(preds, labels if labels.dim() == 1 else torch.argmax(labels, dim=1), num_classes=4, task = 'multiclass')
         self.log('train_loss', loss,
                 on_step=False,
                 on_epoch=True,
@@ -50,19 +54,21 @@ class LitModel(LightningModule):
         return {'loss': loss}
 
     
-    def training_epoch_end(self, outputs):
+    def on_train_epoch_end(self):
         if self.current_epoch == 0:
             self.logger.experiment.add_graph(self.model, self.sample_batch)
     
     
     def evaluate(self, batch, stage=None):
-        inputs = batch['data'].type(torch.float)
+        eeg_input = batch['data'].type(torch.float)
+        subject_id = batch['subject_id'].type(torch.long)
         labels = batch['label'].type(torch.long) if batch['label'].dim() == 1 else batch['label']
         
-        outputs = self(inputs)
+        outputs = self(eeg_input, subject_id)
         loss = self.criterion(outputs, labels)
         preds = torch.argmax(outputs, dim=1)
-        acc = accuracy(preds, labels if labels.dim() == 1 else torch.argmax(labels, dim=1))
+
+        acc = accuracy(preds, labels if labels.dim() == 1 else torch.argmax(labels, dim=1), num_classes=4, task = 'multiclass')
         
         if stage:
             self.log(f'{stage}_loss', loss,
@@ -86,8 +92,9 @@ class LitModel(LightningModule):
         
     
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        inputs = batch['data'].type(torch.float)
-        return self(inputs)
+        eeg_input = batch['data'].type(torch.float)
+        subject_id = batch['subject_id'].type(torch.long)
+        return self(eeg_input, subject_id)
     
     
     def configure_optimizers(self):
@@ -105,9 +112,9 @@ class LitModel(LightningModule):
         }
 
 
-def get_litmodel(args):
+def get_litmodel(args, model=None):
     
-    model = LitModel(args)
+    model = LitModel(args, model = model)
     
     return model
 

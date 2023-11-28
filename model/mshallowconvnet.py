@@ -9,7 +9,10 @@ class MShallowConvNet(nn.Module):
                 sampling_rate: int,
                 dropout_rate: float=0.5):
         super(MShallowConvNet, self).__init__()
-    
+
+        self.num_channels = num_channels
+        self.sampling_rate = sampling_rate
+
         kernel_size = int(sampling_rate * 0.12)
         
         pooling_size = 0.3
@@ -37,6 +40,11 @@ class MShallowConvNet(nn.Module):
         x = self.flatten(x)
         x = self.dropout(x)
         return x
+
+    def calculate_output_dim(self) -> int:
+        x = torch.randn(1, 1, self.num_channels, 751)   #TODO caluclate to hard code
+        x = self(x)
+        return x.shape[-1]
     
 
 class classifier(nn.Module):

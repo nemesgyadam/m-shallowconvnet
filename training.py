@@ -66,6 +66,9 @@ for num_subject in range(args.num_subjects):
     args['target_subject'] = num_subject
     
     dataset = get_dataset(aargs.config_name, args)
+    print(f'Num of dataset: {len(dataset)}')
+    print(f'Num of folds: {args.k_folds}')
+
 
     kfold = KFold(n_splits=args.k_folds, shuffle=True, random_state=args.SEED)
     
@@ -94,9 +97,7 @@ for num_subject in range(args.num_subjects):
         callbacks = get_callbacks(fold=fold, monitor='val_loss', args=args)
         
         trainer = Trainer(
-            progress_bar_refresh_rate=20,
             max_epochs=args.EPOCHS,
-            gpus=[int(aargs.gpu_num)],
             callbacks=callbacks,
             default_root_dir=args.CKPT_PATH,
             logger=logger,

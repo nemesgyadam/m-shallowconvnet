@@ -1,5 +1,5 @@
 #### Path ####
-BASE_PATH: "../Datasets/BCI_Competition_IV/BCI_Competition_IV_2a"
+BASE_PATH: "Datasets/BCI_Competition_IV_2a"
 LOG_PATH: "./logs"
 CKPT_PATH: "./checkpoints"
 
