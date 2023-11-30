@@ -1,5 +1,5 @@
 #### Path ####
-BASE_PATH: "Datasets/BCI_Competition_IV_2a"
+BASE_PATH: "/nas/RAW/BCI/Datasets/BCI_Competition_IV_2a"
 LOG_PATH: "./logs"
 CKPT_PATH: "./checkpoints"
 
@@ -9,8 +9,8 @@ GPU_NUM: "0"
 num_workers: 0
 
 #### Training step ####
-EPOCHS: 1000
-batch_size: 64
+EPOCHS: 500
+batch_size: 512
 lr: 2.0e-3
 
 weight_decay: 0.075
