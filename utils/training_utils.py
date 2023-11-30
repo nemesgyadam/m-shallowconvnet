@@ -28,14 +28,14 @@ def get_scheduler(optimizer, args):
 def get_checkpoint_callback(monitor: str, args):
     if monitor == 'val_acc':
         return ModelCheckpoint(monitor=monitor,
-                                dirpath=f'{args.CKPT_PATH}/{args.LOG_NAME}',
-                                filename=f'{args.task}' + '{epoch:02d}-{val_acc:.3f}',
+                                dirpath=f'{args.CKPT_PATH}/{args.task}/{args.VERSION}',
+                                filename='{epoch:02d}-{val_acc:.3f}',
                                 save_top_k=3,
                                 mode='max')
     elif monitor == 'val_loss':
         return ModelCheckpoint(monitor=monitor,
-                                dirpath=f'{args.CKPT_PATH}/{args.LOG_NAME}',
-                                filename=f'{args.task}' + '{epoch:02d}-{val_loss:.3f}',
+                                dirpath=f'{args.CKPT_PATH}/{args.task}/{args.VERSION}',
+                                filename='{epoch:02d}-{val_loss:.3f}',
                                 save_top_k=3,
                                 mode='min')
     else:

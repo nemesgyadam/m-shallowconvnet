@@ -1,6 +1,6 @@
 #### Path ####
 BASE_PATH: "/nas/RAW/BCI/Datasets/BCI_Competition_IV_2a"
-LOG_PATH: "./logs"
+LOG_PATH: "./logs/BCICompet2a"
 CKPT_PATH: "./checkpoints"
 
 #### Setting step ####
