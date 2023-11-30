@@ -4,12 +4,13 @@ import mne
 import torch
 import scipy
 import numpy as np
+import mne
 from braindecode.datautil.preprocess import exponential_moving_standardize
 from dataloader.augmentation import cutcat
 
 
 class BCICompet2aIV(torch.utils.data.Dataset):
-    def __init__(self, args, return_subject_id = False):
+    def __init__(self, args):
         
         '''
         * 769: Left
@@ -26,9 +27,12 @@ class BCICompet2aIV(torch.utils.data.Dataset):
         self.is_test = args.is_test
         self.downsampling = args.downsampling
         self.args = args
-        self.return_subject_id = return_subject_id
+
         
         self.data, self.label = self.get_brain_data()
+
+        self.calculate_subject_avg()
+        self.calculate_subject_ftr()
         
         
     def __len__(self):
@@ -42,14 +46,49 @@ class BCICompet2aIV(torch.utils.data.Dataset):
         if not self.is_test:
             data, label = self.augmentation(data, label)
         
-        if self.return_subject_id:
-            sample = {'data': data, 'subject_id': self.target_subject, 'label': label}
+        if self.return_subject_info == 'id':
+            sample = {'data': data, 'subject_info': self.target_subject, 'label': label}
+        elif self.return_subject_info == 'avg':
+            sample = {'data': data, 'subject_info': self.subject_avg, 'label': label}
+        elif self.return_subject_info == 'ftr':
+            sample = {'data': data, 'subject_info': self.subject_ftr, 'label': label}
         else:
             sample = {'data': data, 'label': label}
         
         return sample
     
+    def calculate_subject_avg(self):
+        self.subject_avg = np.mean(self.data, axis=0)
     
+    def calculate_subject_ftr(self):
+        BANDS = [(0,8), (8, 13), (13, 18), (18, 25), (25, 38)]
+        sfreq = self.fs
+
+        feature_values = []
+        squeeze_data = np.squeeze(self.data)
+
+        # Calculate features for each band
+        for fmin, fmax in BANDS:
+            psds, freqs = mne.time_frequency.psd_array_multitaper(squeeze_data, sfreq=sfreq, fmin=fmin, fmax=fmax, verbose=False)
+
+            average_power = np.mean(psds, axis=(1, 2))
+            sum_power = np.sum(psds, axis=(1, 2))
+            peak_frequency = freqs[np.argmax(psds, axis=2)].mean(axis=1)
+
+            feature_values.append(np.mean(average_power))
+            feature_values.append(np.mean(sum_power))
+            feature_values.append(np.mean(peak_frequency))
+
+        # Overall features across all bands
+        psds, _ = mne.time_frequency.psd_array_multitaper(squeeze_data, sfreq=sfreq, fmin=8, fmax=25, verbose=False)
+        overall_average_power = np.mean(psds)
+        overall_sum_power = np.sum(psds)
+        overall_std_dev_power = np.std(np.mean(psds, axis=(1, 2)))
+
+        feature_values.extend([overall_average_power, overall_sum_power, overall_std_dev_power])
+
+        self.subject_ftr = np.array(feature_values)
+
     def get_brain_data(self):
 
         filelist = sorted(glob(f'{self.base_path}/*T*.gdf')) if not self.is_test \
