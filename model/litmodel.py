@@ -24,6 +24,7 @@ class LitModel(LightningModule):
             self.model = get_model(args)
         self.criterion = get_criterion()
         self.args = args
+        self.val_accs = []
 
     
   
@@ -87,12 +88,12 @@ class LitModel(LightningModule):
         else:
             eeg_input = batch['data'].type(torch.float)
             outputs = self(eeg_input)
-            
+        
         loss = self.criterion(outputs, labels)
         preds = torch.argmax(outputs, dim=1)
 
         acc = accuracy(preds, labels if labels.dim() == 1 else torch.argmax(labels, dim=1), num_classes=4, task = 'multiclass')
-        
+        self.val_accs.append(acc)
         if stage:
             self.log(f'{stage}_loss', loss,
                     on_step=False,

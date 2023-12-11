@@ -26,15 +26,17 @@ def get_scheduler(optimizer, args):
 
 
 def get_checkpoint_callback(monitor: str, args):
+    version = args['TUNE_VERSION'] if args['TUNE_VERSION'] else args['VERSION']
+
     if monitor == 'val_acc':
         return ModelCheckpoint(monitor=monitor,
-                                dirpath=f'{args.CKPT_PATH}/{args.task}/{args.VERSION}',
+                                dirpath=f'{args.CKPT_PATH}/{args.task}/{version}',
                                 filename='{epoch:02d}-{val_acc:.3f}',
                                 save_top_k=3,
                                 mode='max')
     elif monitor == 'val_loss':
         return ModelCheckpoint(monitor=monitor,
-                                dirpath=f'{args.CKPT_PATH}/{args.task}/{args.VERSION}',
+                                dirpath=f'{args.CKPT_PATH}/{args.task}/{version}',
                                 filename='{epoch:02d}-{val_loss:.3f}',
                                 save_top_k=3,
                                 mode='min')
