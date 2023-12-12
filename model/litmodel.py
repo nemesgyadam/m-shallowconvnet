@@ -81,7 +81,7 @@ class LitModel(LightningModule):
     def evaluate(self, batch, stage=None):
         labels = batch['label'].type(torch.long) if batch['label'].dim() == 1 else batch['label']
 
-        if 'subject_info' in batch.keys():
+        if 'subject_info' in batch.keys() and batch['subject_info'] is not None:
             eeg_input = batch['data'].type(torch.float)
             subject_info = batch['subject_info'].type(torch.long)
             outputs = self(eeg_input, subject_info)
@@ -116,7 +116,7 @@ class LitModel(LightningModule):
         
     
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        if 'subject_info' in batch.keys():
+        if 'subject_info' in batch.keys() and batch['subject_info'] is not None:
             eeg_input = batch['data'].type(torch.float)
             subject_info = batch['subject_info'].type(torch.long)
             return self(eeg_input, subject_info)

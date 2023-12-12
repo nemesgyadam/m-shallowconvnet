@@ -20,6 +20,7 @@ from dataloader.bci_compet import get_dataset
 from dataloader.bci_compet import BCICompet2aIV
 
 from model.litmodel import LitModel
+from model.litmodel import get_litmodel
 
 from model.cat_conditioned import CatConditioned
 from model.attn_conditioned import ATTNConditioned
@@ -45,8 +46,8 @@ torch.set_float32_matmul_precision('medium')
 
 CACHE_ROOT = 'cache'
 config_name = 'bcicompet2a_config'
-METHODS = ["baseline", "cat", "attn", "attn_subjectAverages", "attn_subjectFeatures"]
-info_lookup = {"baseline": False, "cat": "id", "attn": "id", "attn_subjectAverages": "avg", "attn_subjectFeatures": "ftr"}
+METHODS = ["baseline", "cat", "attn", "avg", "ftr"]
+info_lookup = {"baseline": False, "cat": "id", "attn": "id", "avg": "avg", "ftr": "ftr"}
 train_size = 240
 val_size = 48
 
@@ -55,7 +56,7 @@ def parse_args(args):
     parser.add_argument(
         "method",
         type=str,
-        help="baseline OR cat OR attn OR attn_subjectAverages OR attn_subjectFeatures",
+        help="baseline OR cat OR attn OR avg OR ftr",
     )
     parser.add_argument("--n_trials", type=int, default = 2, help="Number of trials to hypertune.")
     args = parser.parse_args(args)
@@ -92,33 +93,49 @@ def train_fnc(trial, args, train_dataloader, test_dataloader):
     args['TUNE_VERSION'] = args['VERSION'] + f'-{trial.number}'
     # Hyperparameters to be tuned by Optuna.
     hyperparams = {
-        "lr": trial.suggest_float("lr", 1e-4, 1e-2, log=True),
+        "lr": 3.0e-4, # trial.suggest_float("lr", 1e-4, 1e-2, log=True),
         #"epochs": trial.suggest_int("epochs", 10, 1000),
         "epochs": args['EPOCHS'],
         #"dropout_probability": trial.suggest_float("dropout", 0.0, 0.5),
         'dropout_probability': 0.2,
-        "eeg_normalization": trial.suggest_categorical("eeg_norm", ["None", "CondBatchNorm", "LayerNorm"]),
-        "subject_normalization": trial.suggest_categorical("subj_norm", ["None", "CondBatchNorm", "LayerNorm"]),
-
+        "eeg_normalization": "LayerNorm", #trial.suggest_categorical("eeg_norm", ["None", "CondBatchNorm", "LayerNorm"]),
+        "subject_normalization": "LayerNorm", #trial.suggest_categorical("subj_norm", ["None", "CondBatchNorm", "LayerNorm"]),
+        "eeg_activation": False, # trial.suggest_categorical("eeg_activation", [True, False]),
+        "embedding_dimension": trial.suggest_int("embedding_dimension", 2, 64),
+        "combined_features_dimension": trial.suggest_int("combined_features_dimension", 32, 128),
     }
+    # if hyperparams["combined_features_dimension"]  > 9:
+    #     hyperparams["combined_features_dimension"] = None
+
+    if args.method  == "ftr":
+        hyperparams["subj_dim"] = trial.suggest_int("subj_dim", 4, 32)
+
     args['lr'] = hyperparams['lr']
-    if args.method == "cat":
-        hyperparams["eeg_activation"] = trial.suggest_categorical("eeg_activation", [True, False])
-        hyperparams["embedding_dimension"] = trial.suggest_int("embedding_dimension", 2, 64)
-        hyperparams["combined_features_dimension"] = trial.suggest_int("combined_features_dimension", 0, 64)
-        if hyperparams["combined_features_dimension"]  > 9:
-            hyperparams["combined_features_dimension"] = None
 
     if args.method == "baseline":
-        model = get_litmodel(args)
+        hyperparams = {
+            "dropout_probability": trial.suggest_float("dropout", 0.0, 0.5),
+        }
+        args['dropout_rate'] = hyperparams['dropout_probability']
+        hyperparams['epochs'] = args['EPOCHS']
+  
+
+    if args.method == "baseline":
+        lit_model = get_litmodel(args)
     elif args.method == "cat":
-        model = CatConditioned(args, num_subjects=9, eeg_normalization=hyperparams["eeg_normalization"], eeg_activation=hyperparams["eeg_activation"], embedding_dimension=hyperparams["embedding_dimension"], subject_normalization=hyperparams["subject_normalization"], dropout_probability=hyperparams["dropout_probability"], combined_features_dimension=hyperparams["combined_features_dimension"], num_classes=args['num_classes'] )
+        model = CatConditioned(args, eeg_normalization=hyperparams["eeg_normalization"], eeg_activation=hyperparams["eeg_activation"], embedding_dimension=hyperparams["embedding_dimension"], subject_normalization=hyperparams["subject_normalization"], dropout_probability=hyperparams["dropout_probability"], combined_features_dimension=hyperparams["combined_features_dimension"] )
         lit_model = LitModel(args, model)
     elif args.method == "attn":
-        model = ATTNConditioned(args, num_subjects=9, subject_filters=16, final_features=4, num_classes=args['num_classes'] )
+        model = ATTNConditioned(args, eeg_normalization=hyperparams["eeg_normalization"], eeg_activation=hyperparams["eeg_activation"], embedding_dimension=hyperparams["embedding_dimension"], subject_normalization=hyperparams["subject_normalization"], dropout_probability=hyperparams["dropout_probability"], combined_features_dimension=hyperparams["combined_features_dimension"])
+        lit_model = LitModel(args, model)
+    elif args.method == "avg":
+        model = ATTNConditionedSubjAvg(args, eeg_normalization=hyperparams["eeg_normalization"], eeg_activation=hyperparams["eeg_activation"], embedding_dimension=hyperparams["embedding_dimension"], subject_normalization=hyperparams["subject_normalization"], dropout_probability=hyperparams["dropout_probability"], combined_features_dimension=hyperparams["combined_features_dimension"] )
+        lit_model = LitModel(args, model)
+    elif args.method == "ftr":
+        model = ATTNConditionedSubjFtr(args,  eeg_normalization=hyperparams["eeg_normalization"], eeg_activation=hyperparams["eeg_activation"], subj_dim=hyperparams["subj_dim"], embedding_dimension=hyperparams["embedding_dimension"], subject_normalization=hyperparams["subject_normalization"], dropout_probability=hyperparams["dropout_probability"], combined_features_dimension=hyperparams["combined_features_dimension"] )
         lit_model = LitModel(args, model)
     else:
-        throw("Not implemented yet")
+        throw("Unknown method")
 
     logger = TensorBoardLogger(args.LOG_PATH, 
                                     name=args.VERSION)
@@ -182,7 +199,7 @@ def main(cmd_args=None):
     val_dataloader_all = DataLoader(val_dataset_all, batch_size=args['batch_size'], shuffle=False, num_workers=0, persistent_workers=False)
 
     print("Starting hypertune! Method: ", args.method)
-    input("Press Enter to continue...")
+    #input("Press Enter to continue...")
     study = optuna.create_study(
         direction="maximize",
         storage="sqlite:///db.sqlite3", 
