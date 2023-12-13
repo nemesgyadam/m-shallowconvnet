@@ -26,7 +26,7 @@ def get_scheduler(optimizer, args):
 
 
 def get_checkpoint_callback(monitor: str, args):
-    version = args['TUNE_VERSION'] if args['TUNE_VERSION'] else args['VERSION']
+    version = args.VERSION if not 'TUNE_VERSION' in args else args.VERSION+'-'+args.TUNE_VERSION
 
     if monitor == 'val_acc':
         return ModelCheckpoint(monitor=monitor,
