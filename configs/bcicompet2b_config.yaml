@@ -1,20 +1,20 @@
 #### Path ####
-BASE_PATH: "../Datasets/BCI_Competition_IV/BCI_Competition_IV_2b"
-LOG_PATH: "./logs"
+BASE_PATH: "/nas/RAW/BCI/Datasets/BCI_Competition_IV_2b"
+LOG_PATH: "./logs/BCICompet2b"
 CKPT_PATH: "./checkpoints"
 
 #### Setting step ####
 SEED: 42
-GPU_NUM: "0"
+GPU_NUM: "1"
 num_workers: 0
 
 #### Training step ####
-EPOCHS: 1000
-batch_size: 64
-lr: 2e-3
+EPOCHS: 500
+batch_size: 512
+lr: 2.0e-3
 
 weight_decay: 0.075
-k_folds: 5
+
 
 #### Experiment variable ####
 task: "BCICompet2b"
