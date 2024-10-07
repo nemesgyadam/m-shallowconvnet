@@ -24,7 +24,7 @@ class MShallowConvNet(nn.Module):
         self.temporal_conv = Conv2dWithConstraint(1, depth, kernel_size=[1, kernel_size], padding='same', max_norm=2.)
         self.spatial_conv = Conv2dWithConstraint(depth, depth, kernel_size=[num_channels, 1], padding='valid', max_norm=2.)
         self.bn = nn.BatchNorm2d(depth)
-        self.avg_pool = nn.AvgPool2d(kernel_size=[1, pooling_kernel_size], stride=[1, pooling_stride_size])
+        self.avg_pool = nn.AvgPool2d(kernel_size=[1, pooling_kernel_size], stride=[1, pooling_stride_size], padding = 0, cel_mode=False)
         self.flatten = nn.Flatten()
         self.dropout = nn.Dropout(p=dropout_rate)
         
